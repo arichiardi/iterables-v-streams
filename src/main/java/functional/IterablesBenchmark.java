@@ -22,6 +22,9 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import clojure.java.api.Clojure;
+import clojure.lang.AFn;
+
 public class IterablesBenchmark {
 
     public static void main(String... args) throws RunnerException {
@@ -47,6 +50,18 @@ public class IterablesBenchmark {
     private static final java.util.function.Function<String, String> streamsIdentity = s -> {
         doSomething();
         return s;
+    };
+
+    /**
+       There is an identity function in Clojure but
+       we do stuff inside here
+    */
+    private static final class CljIdentity extends AFn {
+        @Override
+        public Object invoke(Object s) {
+            doSomething();
+            return s;
+        }
     };
 
     private static <T> Collector<T, ImmutableList.Builder<T>, ImmutableList<T>> toImmutableList() {
@@ -138,6 +153,14 @@ public class IterablesBenchmark {
                 .parallelStream()
                 .map(streamsIdentity)
                 .collect(toImmutableList());
+            doSomethingAfter(result);
+        }
+
+        @Benchmark
+        public void clojure_mapv_in_java() {
+            // Using mapv in order to avoid lazyness
+            IFn mapv = Clojure.var("clojure.core", "mapv");
+            List<String> result = (List<String>) mapv.invoke(new CljIdentity(), list);
             doSomethingAfter(result);
         }
     }
